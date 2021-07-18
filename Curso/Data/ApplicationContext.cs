@@ -17,7 +17,15 @@ namespace Curso.Data
             optionsBuilder
                 .UseSqlServer(strConnection)
                 .EnableSensitiveDataLogging()
+                .UseLazyLoadingProxies() //Ativando o proxy global para toda a aplicação
                 .LogTo(Console.WriteLine, LogLevel.Information);
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            //Filtro global de Marca, somente marcas ativas serão retornadas
+            //modelBuilder.Entity<Marca>().HasQueryFilter(x => x.Ativo);
+            //modelBuilder.Entity<Veiculo>().HasQueryFilter(x => x.Ativo);
         }
 
     }

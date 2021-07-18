@@ -12,21 +12,39 @@ namespace DominandoEFCore
     {
         static void Main(string[] args)
         {
+            #region "Modulo 1"
+
             //EnseureCreatedAndDeleted();
             //GapEnsureCreated();
             //HealthCheckDatabase();
-
             // _count = 0;
             // GerenciarEstadoDaConexao(false);
             // _count = 0;
             // GerenciarEstadoDaConexao(true);
-
             //SqlInjection();
-
             //MigracoesPendentes();
-
             //AplicarMigracaoEmTempodeExecucao();
+            //TodasMigracoes();
+            //MigracoesAplicadas();
+            //GerarSQLScript(); 
+
+            #endregion
+
+            #region "Modulo 2"
+            //CarregamentoAdiantado();
+            //CarregamentoExplicito();
+            //CarregamentoLento(); 
+            #endregion
+
+            #region ""Modulo 3"
+            //FiltroGlobal();
+            //RemovendoFiltroGlobal();
+            //ConsultaProjeta();
+            ConsultaParametrizadas();
+            #endregion
         }
+
+        #region "Modulo 1"
 
         /// <summary>
         /// Alternativa a criação de migrations
@@ -40,7 +58,7 @@ namespace DominandoEFCore
             db.Database.EnsureCreated();
 
             //Se existir o banco de dados ele excluirá toda a base
-            //db.Database.EnsureDeleted();
+            db.Database.EnsureDeleted();
         }
 
         /// <summary>
@@ -192,5 +210,300 @@ namespace DominandoEFCore
 
             db.Database.Migrate();
         }
+
+        /// <summary>
+        /// Obtendo todas as migrações
+        /// </summary>
+        static void TodasMigracoes()
+        {
+            using var db = new ApplicationContext();
+
+            var migracoes = db.Database.GetMigrations();
+
+            Console.WriteLine($"Total de Migrações {migracoes.Count()}");
+
+            foreach (var migracao in migracoes)
+                Console.WriteLine($"Migração: {migracao}");
+        }
+
+        /// <summary>
+        /// Exibie todas as migracoes ja aplicados no banco de dados
+        /// E possivel fazer via command line dotnet ef migrations list --context nomedocontexto
+        /// </summary>
+        static void MigracoesAplicadas()
+        {
+            using var db = new ApplicationContext();
+
+            var migracoes = db.Database.GetAppliedMigrations();
+
+            Console.WriteLine($"Total de Migrações {migracoes.Count()}");
+
+            foreach (var migracao in migracoes)
+                Console.WriteLine($"Migração: {migracao}");
+        }
+
+        /// <summary>
+        /// Gera um script de todo o banco de dados com base no modelo de dados
+        /// </summary>
+        static void GerarSQLScript()
+        {
+            using var db = new ApplicationContext();
+
+            var sql = db.Database.GenerateCreateScript();
+
+            Console.WriteLine(sql);
+        }
+
+        #endregion
+
+        #region "Modulo 2"
+
+        static void SetupDb(ApplicationContext db)
+        {
+            db.Database.EnsureDeleted();
+
+            if (db.Database.EnsureCreated())
+            {
+                if (!db.Marcas.Any())
+                {
+                    db.Marcas.AddRange(
+                        new Marca
+                        {
+                            Nome = "Honda",
+                            Veiculos = new System.Collections.Generic.List<Veiculo>
+                            {
+                            new Veiculo
+                            {
+                                Nome = "Civic",
+                                Ano = 2015,
+                                Modelo = 2016
+                            },
+                            new Veiculo
+                            {
+                                Nome = "HRV",
+                                Ano = 2015,
+                                Modelo = 2016
+                            }
+                            },
+                            Ativo = true
+                        },
+                        new Marca
+                        {
+                            Nome = "Volkswagem",
+                            Veiculos = new System.Collections.Generic.List<Veiculo>
+                            {
+                            new Veiculo
+                            {
+                                Nome = "Gol",
+                                Ano = 2021,
+                                Modelo = 2022,
+                                Ativo = true
+                            },
+                            new Veiculo
+                            {
+                                Nome = "Fusca",
+                                Ano = 1987,
+                                Modelo = 1988,
+                                Ativo = false
+                            }
+                            },
+                            Ativo = true
+                        },
+                        new Marca
+                        {
+                            Nome = "Toyota",
+                            Veiculos = new System.Collections.Generic.List<Veiculo>
+                            {
+                            new Veiculo
+                            {
+                                Nome = "Corolla",
+                                Ano = 2015,
+                                Modelo = 2016,
+                                Ativo = true
+                            }
+                            },
+                            Ativo = false
+                        });
+
+                    db.SaveChanges();
+                    db.ChangeTracker.Clear(); //limpa informaçoes do contexto
+                }
+            }
+        }
+
+        /// <summary>
+        /// Carrega as informaçoes do banco de dados ao serem chamados
+        /// </summary>
+        static void CarregamentoAdiantado()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            var marcas = db
+                .Marcas
+                .Include(p => p.Veiculos);
+
+            foreach (var marca in marcas)
+            {
+
+                Console.WriteLine("---------------------------------------");
+                Console.WriteLine($"Marca: {marca.Nome}");
+
+                if (marca.Veiculos?.Any() ?? false)
+                {
+                    foreach (var veiculo in marca.Veiculos)
+                    {
+                        Console.WriteLine($"\tVeiculo: {veiculo.Nome}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"\tNenhum veiculo na marca encontrado!");
+                }
+            }
+        }
+
+        //Carrega qdo solicitado
+        static void CarregamentoExplicito()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            var marcas = db
+                .Marcas
+                .ToList();
+
+            foreach (var marca in marcas)
+            {
+                if (marca.Id == 2)
+                {
+                    //Carrega tudo
+                    //db.Entry(departamento).Collection(p=>p.Funcionarios).Load();
+
+                    //Utilizando condicional
+                    db.Entry(marca).Collection(p => p.Veiculos).Query().Where(p => p.Id > 2).ToList();
+                }
+
+                Console.WriteLine("---------------------------------------");
+                Console.WriteLine($"Veiculo: {marca.Nome}");
+
+                if (marca.Veiculos?.Any() ?? false)
+                {
+                    foreach (var veiculo in marca.Veiculos)
+                    {
+                        Console.WriteLine($"\tVeiculo: {veiculo.Nome}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"\tNenhum veiculo encontrado!");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Carregado sobre demanda qdo a propriedade de navegação e acessada
+        /// </summary>
+        static void CarregamentoLento()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            //Desabilitando o lazy loading para a consulta
+            //db.ChangeTracker.LazyLoadingEnabled = false;
+
+            var marcas = db.Marcas.ToList();
+
+            foreach (var marca in marcas)
+            {
+                Console.WriteLine("---------------------------------------");
+                Console.WriteLine($"Marca: {marca.Nome}");
+
+                if (marca.Veiculos?.Any() ?? false)
+                {
+                    foreach (var veiculo in marca.Veiculos)
+                    {
+                        Console.WriteLine($"\tVeiculo: {veiculo.Nome}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"\tNenhum veiculo encontrado!");
+                }
+            }
+        }
+
+        #endregion
+
+        #region "Modulo 3"
+
+        static void FiltroGlobal()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            var marcas = db.Marcas.ToList();
+
+            foreach (var marca in marcas)
+            {
+                Console.WriteLine("---------------------------------------");
+                Console.WriteLine($"Marca: {marca.Nome} - Status: {marca.Ativo}");
+            }
+        }
+
+        static void RemovendoFiltroGlobal()
+        {
+            using var db = new ApplicationContext();
+            //SetupDb(db);
+
+            var marcas = db.Marcas.IgnoreQueryFilters().ToList();
+
+            foreach (var marca in marcas)
+            {
+                Console.WriteLine("---------------------------------------");
+                Console.WriteLine($"Marca: {marca.Nome} - Status: {marca.Ativo}");
+            }
+        }
+
+        static void ConsultaProjeta()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            var marcas = db.Marcas
+                .Where(p => p.Id > 0)
+                .Select(p => new { p.Nome, Veiculos = p.Veiculos.Select(v => v.Nome) })
+                .ToList();
+
+            foreach (var marca in marcas)
+            {
+                Console.WriteLine($"Marca: {marca.Nome}");
+
+                foreach (var veiculo in marca.Veiculos)
+                {
+                    Console.WriteLine($"\t Veiculo: {veiculo}");
+                }
+            }
+        }
+
+        static void ConsultaParametrizadas()
+        {
+            using var db = new ApplicationContext();
+            SetupDb(db);
+
+            int id = 2;
+
+            var marcas = db.Marcas
+                .FromSqlRaw("SELECT * FROM MARCAS WHERE ID > {0}", id)
+                .Where(x => x.Ativo)//Pode adicionar o linq tbm
+                .ToList();
+
+            foreach (var marca in marcas)
+            {
+                Console.WriteLine($"Marca: {marca.Nome}");
+            }
+        }
+
+        #endregion
     }
 }

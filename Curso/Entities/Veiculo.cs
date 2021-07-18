@@ -7,6 +7,7 @@ namespace Curso.Entities
         public int Modelo { get; set; }
         public int Ano { get; set; }
         public int MarcaId { get; set; }
-        public Marca Marca { get; set; }
+        public bool Ativo { get; set; }
+        public virtual Marca Marca { get; set; }
     }
 }
